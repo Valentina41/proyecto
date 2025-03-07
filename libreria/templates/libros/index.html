@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block titulo %} Lista de Libros {% endblock %}
+
+{% block contenido %}
+<div class="card">
+    <div class="card-header">
+        <a class="btn btn-success" data-bs-toggle="modal" data-bs-target="#crearLibroModal">
+            Agregar Nuevo Libro
+        </a>
+    </div>
+    <div class="card-body">
+        <h4 class="card-title">Libros</h4>
+        <div class="table-responsive">
+            <table class="table table-primary">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Título</th>
+                        <th scope="col">Imagen</th>
+                        <th scope="col">Descripción</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="libros-list">
+                    {% for libro in libros %}
+                    <tr id="fila-libro-{{ libro.id }}">
+                        <td>{{ libro.id }}</td>
+                        <td>{{ libro.titulo }}</td>
+                        <td><img src="{{ libro.imagen.url }}" height="100" /></td>
+                        <td>{{ libro.descripcion }}</td>   
+                        <td>
+                            <button class="btn btn-info btn-editar"
+                                data-id="{{ libro.id }}"
+                                data-titulo="{{ libro.titulo }}"
+                                data-descripcion="{{ libro.descripcion }}"
+                                data-imagen="{{ libro.imagen.url }}">
+                                Editar
+                            </button> |
+                            <button class="btn btn-danger btn-eliminar"
+                                data-id="{{ libro.id }}">
+                                Borrar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar Libro -->
+<div class="modal fade" id="crearLibroModal" tabindex="-1" aria-labelledby="crearLibroModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="crearLibroModalLabel">Agregar Nuevo Libro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCrearLibro">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="titulo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="imagen" class="form-label">Imagen</label>
+                        <input type="file" class="form-control" id="imagen" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Editar Libro -->
+<!-- Modal para Editar Libro -->
+<div class="modal fade" id="editarLibroModal" tabindex="-1" aria-labelledby="editarLibroModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editarLibroModalLabel">Editar Libro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarLibro">
+                    {% csrf_token %}
+                    <input type="hidden" id="editLibroId" name="id"> <!-- Campo oculto para el ID del libro -->
+                    <div class="mb-3">
+                        <label for="editTitulo" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="editTitulo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDescripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="editDescripcion" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editImagen" class="form-label">Imagen</label>
+                        <input type="file" class="form-control" id="editImagen">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Actualizar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Manejar el formulario de creación 
+    document.getElementById("formCrearLibro").addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        let formData = new FormData();
+        formData.append("titulo", document.getElementById("titulo").value);
+        formData.append("descripcion", document.getElementById("descripcion").value);
+        formData.append("imagen", document.getElementById("imagen").files[0]);
+
+        //Aquí se usa la Fetch API para hacer una solicitud POST al servidor con 
+        // los datos del nuevo libro (título, descripción, imagen).
+        const response = await fetch("{% url 'crear' %}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+            }
+        });
+
+        if (response.ok) {
+            const nuevoLibro = await response.json();
+
+            // Crear una nueva fila en la tabla sin recargar
+            let nuevaFila = document.createElement("tr");
+            nuevaFila.id = `fila-libro-${nuevoLibro.id}`;
+            nuevaFila.innerHTML = `
+                <td>${nuevoLibro.id}</td>
+                <td>${nuevoLibro.titulo}</td>
+                <td><img src="${nuevoLibro.imagen}" height="100" /></td>
+                <td>${nuevoLibro.descripcion}</td>
+                <td>
+                    <button class="btn btn-info btn-editar"
+                        data-id="${nuevoLibro.id}"
+                        data-titulo="${nuevoLibro.titulo}"
+                        data-descripcion="${nuevoLibro.descripcion}"
+                        data-imagen="${nuevoLibro.imagen}">
+                        Editar
+                    </button> |
+                    <button class="btn btn-danger btn-eliminar" data-id="${nuevoLibro.id}">Borrar</button>
+                </td>
+            `;
+
+            document.getElementById("libros-list").appendChild(nuevaFila);
+
+            // Cerrar el modal
+            let modal = bootstrap.Modal.getInstance(document.getElementById("crearLibroModal"));
+            modal.hide();
+
+            // Resetear formulario
+            document.getElementById("formCrearLibro").reset();
+        } else {
+            alert("Error al agregar el libro");
+        }
+    });
+
+    // Manejar la apertura del modal de edición
+    document.addEventListener("click", function(event) {
+    if (event.target.classList.contains("btn-editar")) {
+        const libroId = event.target.getAttribute("data-id");
+        const libroTitulo = event.target.getAttribute("data-titulo");
+        const libroDescripcion = event.target.getAttribute("data-descripcion");
+        const libroImagen = event.target.getAttribute("data-imagen");
+
+        // Llenar los campos del formulario de edición
+        document.getElementById("editLibroId").value = libroId;
+        document.getElementById("editTitulo").value = libroTitulo;
+        document.getElementById("editDescripcion").value = libroDescripcion;
+
+        // Abre el modal
+        new bootstrap.Modal(document.getElementById("editarLibroModal")).show();
+    }
+});
+
+
+    // Manejar la edición de un libro 
+    document.getElementById("formEditarLibro").addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        const libroId = document.getElementById("editLibroId").value;
+        let formData = new FormData();
+        formData.append("titulo", document.getElementById("editTitulo").value);
+        formData.append("descripcion", document.getElementById("editDescripcion").value);
+        if (document.getElementById("editImagen").files.length > 0) {
+            formData.append("imagen", document.getElementById("editImagen").files[0]);
+        }
+
+        //Fetch API se utiliza para realizar una solicitud POST 
+        // con los datos editados de un libro al servidor.
+        const response = await fetch(`/libros/editar/${libroId}/`, {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+            }
+        });
+
+        if (response.ok) {
+            const libroActualizado = await response.json();
+
+            // Actualizar la fila 
+            const fila = document.getElementById(`fila-libro-${libroActualizado.id}`);
+            fila.innerHTML = `
+                <td>${libroActualizado.id}</td>
+                <td>${libroActualizado.titulo}</td>
+                <td><img src="${libroActualizado.imagen}" height="100" /></td>
+                <td>${libroActualizado.descripcion}</td>
+                <td>
+                    <button class="btn btn-info btn-editar"
+                        data-id="${libroActualizado.id}"
+                        data-titulo="${libroActualizado.titulo}"
+                        data-descripcion="${libroActualizado.descripcion}"
+                        data-imagen="${libroActualizado.imagen}">
+                        Editar
+                    </button> |
+                    <button class="btn btn-danger btn-eliminar" data-id="${libroActualizado.id}">Borrar</button>
+                </td>
+            `;
+
+            // Cerrar el modal
+            let modal = bootstrap.Modal.getInstance(document.getElementById("editarLibroModal"));
+            modal.hide();
+
+            // Resetear formulario
+            document.getElementById("formEditarLibro").reset();
+        } else {
+            alert("Error al editar el libro");
+        }
+    });
+
+    // Manejar la eliminación de libros sin recargar la página
+    document.addEventListener("click", async function(event) {
+        if (event.target.classList.contains("btn-eliminar")) {
+            const libroId = event.target.getAttribute("data-id");
+
+            //Fetch API para hacer una solicitud DELETE al servidor y eliminar un libro.
+            const response = await fetch(`/libros/eliminar/${libroId}/`, {
+                method: "DELETE",
+                headers: {
+                    "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                }
+            });
+
+            if (response.ok) {
+                // Eliminar la fila del DOM si la eliminación fue exitosa
+                const fila = document.getElementById(`fila-libro-${libroId}`);
+                fila.remove();
+            } else {
+                alert("Error al eliminar el libro");
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}
